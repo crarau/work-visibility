@@ -7,8 +7,8 @@ class CompetencyAgent:
         self.competency_description = competency_description
         self.llm = OpenAI(temperature=0.0)  # Set temperature to 0 for deterministic output
 
-    def analyze_pr(self, pr_patch: str, pr_description: str, pr_link: str) -> Dict[str, Any]:
-        prompt = f"""
+    def generate_prompt(self, pr_patch: str, pr_description: str, pr_link: str) -> str:
+        return f"""
         Competency Description:
         {self.competency_description}
 
@@ -18,6 +18,9 @@ class CompetencyAgent:
         PR Patch:
         {pr_patch}
 
+        PR Link:
+        {pr_link}
+
         Determine if the PR relates to the competency. If it does, summarize the relevant parts. If not, return exactly "-" (a single dash).
 
         Response format:
@@ -26,6 +29,8 @@ class CompetencyAgent:
         }}
         """
 
+    def analyze_pr(self, pr_patch: str, pr_description: str, pr_link: str) -> Dict[str, Any]:
+        prompt = self.generate_prompt(pr_patch, pr_description, pr_link)
         response = self.llm.invoke(prompt)
         try:
             result = eval(response.strip())

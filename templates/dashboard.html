@@ -160,6 +160,11 @@
         </div>
     </div>
 
+    <!-- Add buttons to trigger agent run and view logs -->
+    <div class="button-container">
+        <button type="button" onclick="runAgents()">Run Competency Agents</button>
+    </div>
+
     <script>
         function openModal() {
             document.getElementById('reviewModal').style.display = 'block';
@@ -215,6 +220,38 @@
                     console.error('Error saving competencies:', error);
                     alert('An error occurred while saving competencies. Please try again.');
                 });
+        }
+
+        async function runAgents() {
+            try {
+                const response = await axios.post('/run_agents');
+                if (response.data.success) {
+                    const callId = response.data.call_id;
+                    alert(`Agents started successfully. Call ID: ${callId}`);
+                    // Optionally, redirect to a logs page or fetch logs
+                } else {
+                    alert('Failed to start agents.');
+                }
+            } catch (error) {
+                console.error('Error running agents:', error);
+                alert('An error occurred while running agents.');
+            }
+        }
+
+        // Function to fetch logs for a specific call_id
+        async function fetchAgentLogs(callId) {
+            try {
+                const response = await axios.get(`/agent_logs/${callId}`);
+                // Display logs in the modal or desired section
+                // Example:
+                const logs = response.data.logs;
+                const reviewContent = document.getElementById('reviewContent');
+                reviewContent.innerHTML = logs.map(log => `<p>[${log.timestamp}] ${log.status.toUpperCase()}: ${log.message}</p>`).join('');
+                openModal();
+            } catch (error) {
+                console.error('Error fetching agent logs:', error);
+                alert('An error occurred while fetching agent logs.');
+            }
         }
     </script>
 </body>
