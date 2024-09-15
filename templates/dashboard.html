@@ -130,13 +130,23 @@
             <div class="competency-matrix">
                 <h2>Competency Matrix</h2>
                 <div id="competencies">
-                    {% for competency in competencies %}
-                    <div class="competency-card">
-                        <h3>{{ competency }}</h3>
-                        <textarea name="{{ competency.replace(' ', '_') }}" placeholder="Describe the competency..."></textarea>
-                    </div>
-                    {% endfor %}
+                    {% if competencies is mapping %}
+                        {% for competency, description in competencies.items() %}
+                        <div class="competency-card">
+                            <h3>{{ competency.replace('_', ' ') }}</h3>
+                            <textarea name="{{ competency }}" placeholder="Describe the competency...">{{ description }}</textarea>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        {% for competency in competencies %}
+                        <div class="competency-card">
+                            <h3>{{ competency.replace('_', ' ') }}</h3>
+                            <textarea name="{{ competency }}" placeholder="Describe the competency..."></textarea>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
                 </div>
+                <button onclick="saveCompetencies()" style="margin-top: 20px;">Save Competencies</button>
             </div>
         </div>
         <button onclick="openModal()" style="margin-top: 20px;">Generate Performance Review</button>
@@ -185,6 +195,26 @@
             // Fetch a new joke every second
             fetchJoke();
             setInterval(fetchJoke, 1000);
+        }
+
+        function saveCompetencies() {
+            const competencies = {};
+            document.querySelectorAll('#competencies textarea').forEach(textarea => {
+                competencies[textarea.name] = textarea.value;
+            });
+
+            axios.post('/save-competencies', competencies)
+                .then(response => {
+                    if (response.data.success) {
+                        alert('Competencies saved successfully!');
+                    } else {
+                        alert('Error saving competencies. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving competencies:', error);
+                    alert('An error occurred while saving competencies. Please try again.');
+                });
         }
     </script>
 </body>

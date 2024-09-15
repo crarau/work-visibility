@@ -3,6 +3,7 @@ from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 import random
+from bson import ObjectId
 
 load_dotenv()
 
@@ -24,7 +25,7 @@ except Exception as e:
 
 @app.route('/')
 def index():
-    if pr_collection is None:
+    if pr_collection is None or db is None:
         return "Database connection error", 500
     
     try:
@@ -40,15 +41,37 @@ def index():
             }
         ).sort("updated_at", -1).limit(50)
         
-        competencies = [
-            "Writing code", "Testing", "Debugging", "Observability",
-            "Understanding Code", "Software Architecture", "Security"
-        ]
+        # Default competencies
+        default_competencies = {
+            "Writing_code": "Consistently writes production-ready code that is easily testable, easily understood by other developers, and accounts for edge cases and errors. Understands when it is appropriate to leave comments, but biases towards self-documenting code.",
+            "Testing": "Understands the testing pyramid, and writes unit tests as well as higher level tests in accordance with it. Always writes tests to handle expected edge cases and errors gracefully, as well as happy paths.",
+            "Debugging": "Proficient at using systematic debugging to diagnose all issues located to a single service. Uses systematic debugging to diagnose cross service issues, sometimes with help from more senior engineers.",
+            "Observability": "Is aware of the organization's monitoring philosophy. Helps tune and change the monitoring on their team accordingly. Is aware of the operational data for their team's domain and uses it as a basis for suggesting stability and performance improvements.",
+            "Understanding_Code": "Understands their team's domain at a high level and can gather sufficient context to work productively within it. Has expertise in a portion of their team's domain.",
+            "Software_Architecture": "Consistently designs code that is aligned with the overall service architecture. Utilizes abstractions and code isolation effectively.",
+            "Security": "Approaches all engineering work with a security lens. Actively looks for security vulnerabilities both in the code and when providing peer reviews."
+        }
+        
+        # Fetch user's competencies from the database
+        user_id = generate_github_user_id()
+        user_matrix = db.competency_matrices.find_one({"user_id": user_id})
+        
+        if user_matrix and "competencies" in user_matrix:
+            competency_ids = user_matrix["competencies"]
+            competencies = {}
+            for comp_id in competency_ids:
+                comp = db.competencies.find_one({"_id": ObjectId(comp_id)})
+                if comp:
+                    competencies[comp["name"]] = comp["description"]
+        else:
+            competencies = default_competencies
         
         return render_template('dashboard.html', prs=list(prs), competencies=competencies)
     except Exception as e:
-        print(f"Error fetching data: {e}")
-        return "Error fetching data", 500
+        import traceback
+        error_message = f"Error fetching data: {str(e)}\n{traceback.format_exc()}"
+        print(error_message)
+        return error_message, 500
 
 @app.route('/competency-matrix', methods=['GET', 'POST'])
 def competency_matrix():
@@ -94,6 +117,27 @@ def get_joke():
         "Why did the developer quit his job? Because he didn't get arrays!"
     ]
     return jsonify({"joke": random.choice(jokes)})
+
+@app.route('/save-competencies', methods=['POST'])
+def save_competencies():
+    if db is None:
+        return jsonify({"success": False, "error": "Database connection error"}), 500
+    
+    try:
+        competencies = request.json
+        user_id = generate_github_user_id()  # You may want to replace this with actual user authentication
+        
+        # Update or insert the competencies for the user
+        db.competency_matrices.update_one(
+            {"user_id": user_id},
+            {"$set": {"competencies": competencies}},
+            upsert=True
+        )
+        
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error saving competencies: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
