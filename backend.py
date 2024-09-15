@@ -10,8 +10,8 @@ load_dotenv()
 
 # GitHub API settings
 GITHUB_API_URL = "https://api.github.com"
-REPO_OWNER = "openai"  # Replace with the actual owner
-REPO_NAME = "openai-python"    # Replace with the actual repository name
+REPO_OWNER = "openai"
+REPO_NAME = "openai-python"
 
 # Get the tokens from the .env file
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -25,10 +25,6 @@ if GITHUB_TOKEN:
 client = MongoClient(MONGO_URI)
 db = client.github_prs
 pr_collection = db.pull_requests
-
-# https://github.com/openai/openai-python
-
-# The fetch_recent_merged_prs, fetch_pr_comments, fetch_pr_details, and fetch_pr_patch functions remain unchanged
 
 def fetch_recent_merged_prs(from_date, to_date):
     url = f"{GITHUB_API_URL}/repos/{REPO_OWNER}/{REPO_NAME}/pulls"
@@ -101,7 +97,7 @@ def get_last_update_time():
         # If no PRs exist or if 'updated_at' is missing, return None
         return None
 
-def main():
+def update_prs():
     to_date = datetime.now(timezone.utc)
     from_date = to_date - timedelta(days=30)
     
@@ -149,4 +145,4 @@ def main():
     print("PR data has been updated in MongoDB")
 
 if __name__ == "__main__":
-    main()
+    update_prs()
