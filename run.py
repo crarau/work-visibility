@@ -1,8 +1,9 @@
 import requests
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 from dotenv import load_dotenv
+from pymongo import MongoClient
 
 # Load environment variables from .env file
 load_dotenv()
@@ -12,24 +13,34 @@ GITHUB_API_URL = "https://api.github.com"
 REPO_OWNER = "openai"  # Replace with the actual owner
 REPO_NAME = "openai-python"    # Replace with the actual repository name
 
-# https://github.com/openai/openai-python
-
-# Get the token from the .env file
+# Get the tokens from the .env file
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+MONGO_URI = os.getenv("MONGO_URI")
 
 headers = {}
 if GITHUB_TOKEN:
     headers["Authorization"] = f"token {GITHUB_TOKEN}"
 
-def fetch_recent_merged_prs():
+# MongoDB connection
+client = MongoClient(MONGO_URI)
+db = client.github_prs
+pr_collection = db.pull_requests
+
+# https://github.com/openai/openai-python
+
+# The fetch_recent_merged_prs, fetch_pr_comments, fetch_pr_details, and fetch_pr_patch functions remain unchanged
+
+def fetch_recent_merged_prs(from_date, to_date):
     url = f"{GITHUB_API_URL}/repos/{REPO_OWNER}/{REPO_NAME}/pulls"
-    one_month_ago = (datetime.now() - timedelta(days=7)).isoformat()
     params = {
         "state": "closed",
         "sort": "updated",
         "direction": "desc",
         "per_page": 100,
     }
+    
+    params["since"] = from_date.isoformat()
+
     all_prs = []
 
     while True:
@@ -40,13 +51,11 @@ def fetch_recent_merged_prs():
         if not prs:
             break
 
-        for pr in prs:
-            if pr['merged_at'] and pr['merged_at'] > one_month_ago:
-                all_prs.append(pr)
-            elif pr['updated_at'] < one_month_ago:
-                return all_prs  # Stop if we've gone past our time window
+        # Filter PRs based on the to_date
+        filtered_prs = [pr for pr in prs if datetime.fromisoformat(pr['updated_at'].replace('Z', '+00:00')) <= to_date]
+        all_prs.extend(filtered_prs)
 
-        if 'next' in response.links:
+        if 'next' in response.links and datetime.fromisoformat(prs[-1]['updated_at'].replace('Z', '+00:00')) > from_date:
             url = response.links['next']['url']
         else:
             break
@@ -84,12 +93,29 @@ def fetch_pr_patch(pr_number):
     response.raise_for_status()
     return response.text
 
-def main():
-    prs = fetch_recent_merged_prs()
-    print(f"Fetched {len(prs)} merged PRs from the last month.")
+def get_last_update_time():
+    most_recent_pr = pr_collection.find_one(sort=[("updated_at", -1)])
+    if most_recent_pr and "updated_at" in most_recent_pr:
+        return most_recent_pr["updated_at"]
+    else:
+        # If no PRs exist or if 'updated_at' is missing, return None
+        return None
 
-    pr_data = []
+def main():
+    to_date = datetime.now(timezone.utc)
+    from_date = to_date - timedelta(days=30)
+    
+    prs = fetch_recent_merged_prs(from_date, to_date)
+    print(f"Fetched {len(prs)} PRs updated between {from_date.date()} and {to_date.date()}.")
+
     for pr in prs:
+        # Check if PR exists and if it has been updated
+        existing_pr = pr_collection.find_one({"number": pr['number']})
+        if existing_pr and existing_pr.get('updated_at') == pr['updated_at']:
+            print(f"No changes for PR #{pr['number']}")
+            continue
+
+        # Fetch additional details only if PR is new or updated
         pr_details = fetch_pr_details(pr['number'])
         pr_patch = fetch_pr_patch(pr['number'])
         pr_info = {
@@ -97,22 +123,30 @@ def main():
             "title": pr['title'],
             "created_at": pr['created_at'],
             "merged_at": pr['merged_at'],
+            "updated_at": pr['updated_at'],
             "user": pr['user']['login'],
             "body": pr['body'],
             "comments": fetch_pr_comments(pr['number']),
             "additions": pr_details['additions'],
             "deletions": pr_details['deletions'],
             "changed_files": pr_details['changed_files'],
-            "patch": pr_patch
+            "patch": pr_patch,
+            "state": pr['state']
         }
-        pr_data.append(pr_info)
-        print(f"Fetched data for PR #{pr['number']}")
+        
+        # Insert or update the PR in MongoDB
+        result = pr_collection.update_one(
+            {"number": pr['number']},
+            {"$set": pr_info},
+            upsert=True
+        )
+        
+        if result.modified_count > 0:
+            print(f"Updated data for PR #{pr['number']} in MongoDB")
+        elif result.upserted_id:
+            print(f"Inserted new data for PR #{pr['number']} in MongoDB")
 
-    output_file = "recent_merged_prs_with_comments.json"
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(pr_data, f, ensure_ascii=False, indent=2)
-
-    print(f"Merged PR data with comments has been saved to {output_file}")
+    print("PR data has been updated in MongoDB")
 
 if __name__ == "__main__":
     main()
