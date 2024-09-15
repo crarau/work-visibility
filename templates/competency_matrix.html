@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Competency Matrix</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/competency_matrix.css') }}">
+</head>
+<body>
+    <h1>Competency Matrix</h1>
+    <form id="competencyForm">
+        <h2>Senior Engineer</h2>
+        <div id="competencies">
+            <div class="competency-card">
+                <h3>Writing code</h3>
+                <textarea name="Writing_code" placeholder="Describe the competency...">Consistently writes production-ready code that is easily testable, easily understood by other developers, and accounts for edge cases and errors. Understands when it is appropriate to leave comments, but biases towards self-documenting code.</textarea>
+            </div>
+            <div class="competency-card">
+                <h3>Testing</h3>
+                <textarea name="Testing" placeholder="Describe the competency...">Understands the testing pyramid, and writes unit tests as well as higher level tests in accordance with it. Always writes tests to handle expected edge cases and errors gracefully, as well as happy paths.</textarea>
+            </div>
+            <div class="competency-card">
+                <h3>Debugging</h3>
+                <textarea name="Debugging" placeholder="Describe the competency...">Proficient at using systematic debugging to diagnose all issues located to a single service. Uses systematic debugging to diagnose cross service issues, sometimes with help from more senior engineers.</textarea>
+            </div>
+            <div class="competency-card">
+                <h3>Observability</h3>
+                <textarea name="Observability" placeholder="Describe the competency...">Is aware of the organization's monitoring philosophy. Helps tune and change the monitoring on their team accordingly. Is aware of the operational data for their team's domain and uses it as a basis for suggesting stability and performance improvements.</textarea>
+            </div>
+            <div class="competency-card">
+                <h3>Understanding Code</h3>
+                <textarea name="Understanding_Code" placeholder="Describe the competency...">Understands their team's domain at a high level and can gather sufficient context to work productively within it. Has expertise in a portion of their team's domain.</textarea>
+            </div>
+            <div class="competency-card">
+                <h3>Software Architecture</h3>
+                <textarea name="Software_Architecture" placeholder="Describe the competency...">Consistently designs code that is aligned with the overall service architecture. Utilizes abstractions and code isolation effectively.</textarea>
+            </div>
+            <div class="competency-card">
+                <h3>Security</h3>
+                <textarea name="Security" placeholder="Describe the competency...">Approaches all engineering work with a security lens. Actively looks for security vulnerabilities both in the code and when providing peer reviews.</textarea>
+            </div>
+        </div>
+        <div class="button-container">
+            <button type="button" onclick="addCompetency()">Add Competency</button>
+            <button type="submit">Submit</button>
+        </div>
+    </form>
+
+    <script>
+        function addCompetency() {
+            const competenciesDiv = document.getElementById('competencies');
+            const competencyName = prompt('Enter the name of the new competency:');
+            if (competencyName) {
+                const newCompetency = document.createElement('div');
+                newCompetency.className = 'competency-card';
+                newCompetency.innerHTML = `
+                    <h3>${competencyName}</h3>
+                    <textarea name="${competencyName.replace(' ', '_')}" placeholder="Describe the competency..."></textarea>
+                `;
+                competenciesDiv.appendChild(newCompetency);
+            }
+        }
+
+        document.getElementById('competencyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            try {
+                const response = await axios.post('/competency-matrix', formData);
+                if (response.data.success) {
+                    alert(`Submission successful. User ID: ${response.data.user_id}`);
+                }
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                alert('An error occurred while submitting the form.');
+            }
+        });
+    </script>
+</body>
+</html>
