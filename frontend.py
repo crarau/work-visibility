@@ -5,28 +5,41 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI")
-client = MongoClient(MONGO_URI)
-db = client.github_prs
-pr_collection = db.pull_requests
-competencies_collection = db.competencies
-competency_matrices_collection = db.competency_matrices
-
 app = Flask(__name__)
+
+# MongoDB connection
+MONGO_URI = os.getenv("MONGO_URI")
+client = None
+db = None
+pr_collection = None
+
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    client.server_info()  # This will raise an exception if connection fails
+    db = client.github_prs
+    pr_collection = db.pull_requests
+except Exception as e:
+    print(f"Failed to connect to MongoDB: {e}")
 
 @app.route('/')
 def index():
-    prs = pr_collection.find({}, {
-        "number": 1,
-        "title": 1,
-        "user": 1,
-        "state": 1,
-        "created_at": 1,
-        "updated_at": 1,
-        "_id": 0
-    }).sort("updated_at", -1).limit(50)
+    if pr_collection is None:
+        return "Database connection error", 500
     
-    return render_template('index.html', prs=prs)
+    try:
+        prs = pr_collection.find({}, {
+            "number": 1,
+            "title": 1,
+            "user": 1,
+            "state": 1,
+            "created_at": 1,
+            "updated_at": 1,
+            "_id": 0
+        }).sort("updated_at", -1).limit(50)
+        return render_template('index.html', prs=list(prs))
+    except Exception as e:
+        print(f"Error fetching PRs: {e}")
+        return "Error fetching data", 500
 
 @app.route('/competency-matrix', methods=['GET', 'POST'])
 def competency_matrix():
