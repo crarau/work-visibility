@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from competency_agent import CompetencyAgent  # Ensure this import
 import uuid
 import threading
+from openai import OpenAI
 
 load_dotenv()
 
@@ -35,6 +36,9 @@ pr_collection = db.pull_requests
 competencies_collection = db.competencies
 agent_responses_collection = db.agent_responses
 agent_logs_collection = db.agent_logs
+
+# Add this near the top of your file, after other imports
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.route('/')
 def index():
@@ -211,6 +215,48 @@ def save_competencies():
 def generate_github_user_id():
     # Return the static user ID
     return 'oa6xgic4mf'
+
+# Add this new route
+@app.route('/generate_performance_review', methods=['GET'])
+def generate_performance_review():
+    competencies = competencies_collection.find()
+    agent_responses = agent_responses_collection.find()
+
+    review = ""
+    for competency in competencies:
+        competency_name = competency['name']
+        competency_description = competency['description']
+        
+        relevant_responses = [
+            response['summary'] 
+            for response in agent_responses 
+            if response['competency_name'] == competency_name
+        ]
+        
+        combined_summary = " ".join(relevant_responses)
+        
+        prompt = f"""
+        Competency: {competency_name}
+        Description: {competency_description}
+        
+        Summary of agent responses:
+        {combined_summary}
+        
+        Based on the above information, provide a brief performance review. Make it a single paragraph of the developer's impact and top competencies .
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that generates performance reviews based on competency evaluations."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=150
+        )
+        
+        review += f"## {competency_name}\n\n{response.choices[0].message.content}\n\n"
+
+    return jsonify({"review": review})
 
 if __name__ == '__main__':
     app.run(debug=True)

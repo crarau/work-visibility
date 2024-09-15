@@ -150,6 +150,7 @@
             </div>
         </div>
         <button onclick="openModal()" style="margin-top: 20px;">Generate Performance Review</button>
+        <button onclick="generateToplineReview()" style="margin-top: 20px; margin-left: 10px;">Generate Top-line Review</button>
     </div>
 
     <div id="reviewModal" class="modal">
@@ -157,6 +158,15 @@
             <span class="close" onclick="closeModal()">&times;</span>
             <h2>Performance Review</h2>
             <div id="reviewContent"></div>
+        </div>
+    </div>
+
+    <!-- Add this new modal for the top-line review -->
+    <div id="toplineReviewModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeToplineModal()">&times;</span>
+            <h2>Top-line Review</h2>
+            <div id="toplineReviewContent"></div>
         </div>
     </div>
 
@@ -169,6 +179,11 @@
         function closeModal() {
             document.getElementById('reviewModal').style.display = 'none';
             document.getElementById('reviewContent').innerHTML = '';
+        }
+
+        function closeToplineModal() {
+            document.getElementById('toplineReviewModal').style.display = 'none';
+            document.getElementById('toplineReviewContent').innerHTML = '';
         }
 
         async function runAgentsAndFetchLogs() {
@@ -234,6 +249,21 @@
                 .catch(error => {
                     console.error('Error saving competencies:', error);
                     alert('An error occurred while saving competencies. Please try again.');
+                });
+        }
+
+        function generateToplineReview() {
+            const toplineReviewContent = document.getElementById('toplineReviewContent');
+            toplineReviewContent.innerHTML = 'Generating top-line review...';
+            document.getElementById('toplineReviewModal').style.display = 'block';
+
+            axios.get('/generate_performance_review')
+                .then(response => {
+                    toplineReviewContent.innerHTML = response.data.review;
+                })
+                .catch(error => {
+                    console.error('Error generating top-line review:', error);
+                    toplineReviewContent.innerHTML = 'An error occurred while generating the top-line review.';
                 });
         }
     </script>
