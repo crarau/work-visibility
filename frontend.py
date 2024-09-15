@@ -9,6 +9,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from competency_agent import CompetencyAgent  # Ensure this import
 import uuid
+import threading
 
 load_dotenv()
 
@@ -88,6 +89,12 @@ def run_agents():
         "message": "Agent run initiated."
     })
 
+    # Start the agent processing in a background thread
+    threading.Thread(target=process_agents, args=(call_id,)).start()
+
+    return jsonify({"success": True, "call_id": call_id, "message": "Agents processing started."}), 202
+
+def process_agents(call_id):
     try:
         total_prs = pr_collection.count_documents({})
         total_competencies = competencies_collection.count_documents({})
@@ -127,7 +134,8 @@ def run_agents():
                     "message": f"Evaluating competency '{competency_name}' for PR #{pr_number}."
                 })
 
-                agent = CompetencyAgent(competency_description)
+                # Create CompetencyAgent with the API key
+                agent = CompetencyAgent(competency_description, os.getenv("OPENAI_API_KEY"))
                 prompt = agent.generate_prompt(pr_patch, pr_description, pr_link)
                 result = agent.analyze_pr(pr_patch, pr_description, pr_link)
 
@@ -157,9 +165,6 @@ def run_agents():
             "status": "completed",
             "message": "All agents have been processed successfully."
         })
-
-        return jsonify({"success": True, "call_id": call_id, "message": "Agents processed successfully."}), 200
-
     except Exception as e:
         agent_logs_collection.insert_one({
             "call_id": call_id,
@@ -167,7 +172,6 @@ def run_agents():
             "status": "error",
             "message": f"Error during agent processing: {str(e)}"
         })
-        return jsonify({"success": False, "call_id": call_id, "error": str(e)}), 500
 
 @app.route('/agent_logs/<call_id>', methods=['GET'])
 def get_agent_logs(call_id):
