@@ -219,6 +219,7 @@ def generate_github_user_id():
 # Add this new route
 @app.route('/generate_performance_review', methods=['GET'])
 def generate_performance_review():
+    review_id = str(uuid.uuid4())
     competencies = competencies_collection.find()
     agent_responses = agent_responses_collection.find()
 
@@ -226,6 +227,16 @@ def generate_performance_review():
     for competency in competencies:
         competency_name = competency['name']
         competency_description = competency['description']
+        
+        # Log and insert: Starting competency review
+        log_message = f"Starting review for competency: {competency_name}"
+        print(log_message)
+        agent_logs_collection.insert_one({
+            "review_id": review_id,
+            "timestamp": datetime.utcnow(),
+            "status": "info",
+            "message": log_message
+        })
         
         relevant_responses = [
             response['summary'] 
@@ -235,6 +246,16 @@ def generate_performance_review():
         
         combined_summary = " ".join(relevant_responses)
         
+        # Log and insert: Prepared summary
+        log_message = f"Prepared summary for competency: {competency_name}"
+        print(log_message)
+        agent_logs_collection.insert_one({
+            "review_id": review_id,
+            "timestamp": datetime.utcnow(),
+            "status": "info",
+            "message": log_message
+        })
+        
         prompt = f"""
         Competency: {competency_name}
         Description: {competency_description}
@@ -242,8 +263,18 @@ def generate_performance_review():
         Summary of agent responses:
         {combined_summary}
         
-        Based on the above information, provide a brief performance review. Make it a single paragraph of the developer's impact and top competencies .
+        Based on the above information, provide a brief performance review. Start with a single paragraph of the developer's impact and top competencies.
         """
+        
+        # Log and insert: Sending request to OpenAI
+        log_message = f"Sending request to OpenAI for competency: {competency_name}"
+        print(log_message)
+        agent_logs_collection.insert_one({
+            "review_id": review_id,
+            "timestamp": datetime.utcnow(),
+            "status": "info",
+            "message": log_message
+        })
         
         response = client.chat.completions.create(
             model="gpt-4",
@@ -254,9 +285,29 @@ def generate_performance_review():
             max_tokens=150
         )
         
+        # Log and insert: Received response from OpenAI
+        log_message = f"Received response from OpenAI for competency: {competency_name}"
+        print(log_message)
+        agent_logs_collection.insert_one({
+            "review_id": review_id,
+            "timestamp": datetime.utcnow(),
+            "status": "info",
+            "message": log_message
+        })
+        
         review += f"## {competency_name}\n\n{response.choices[0].message.content}\n\n"
 
-    return jsonify({"review": review})
+    # Log and insert: Completed performance review
+    log_message = "Completed generating performance review"
+    print(log_message)
+    agent_logs_collection.insert_one({
+        "review_id": review_id,
+        "timestamp": datetime.utcnow(),
+        "status": "completed",
+        "message": log_message
+    })
+
+    return jsonify({"review": review, "review_id": review_id})
 
 if __name__ == '__main__':
     app.run(debug=True)

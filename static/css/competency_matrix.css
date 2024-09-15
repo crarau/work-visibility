@@ -113,3 +113,29 @@ button[type="button"] {
 button[type="button"]:hover {
     background-color: #e67e22;
 }
+
+#toplineReviewContent {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.competency-section {
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.competency-section h3 {
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--primary-color);
+    padding-bottom: 5px;
+}
+
+.competency-section p {
+    margin: 0;
+    line-height: 1.6;
+}

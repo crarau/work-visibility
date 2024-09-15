@@ -253,17 +253,27 @@
         }
 
         function generateToplineReview() {
+            document.getElementById('toplineReviewModal').style.display = 'block';
             const toplineReviewContent = document.getElementById('toplineReviewContent');
             toplineReviewContent.innerHTML = 'Generating top-line review...';
-            document.getElementById('toplineReviewModal').style.display = 'block';
 
-            axios.get('/generate_performance_review')
-                .then(response => {
-                    toplineReviewContent.innerHTML = response.data.review;
+            fetch('/generate_performance_review')
+                .then(response => response.json())
+                .then(data => {
+                    const reviewSections = data.review.split('##').filter(section => section.trim() !== '');
+                    toplineReviewContent.innerHTML = reviewSections.map(section => {
+                        const [competency, ...content] = section.split('\n');
+                        return `
+                            <div class="competency-section">
+                                <h3>${competency.trim()}</h3>
+                                <p>${content.join('\n').trim()}</p>
+                            </div>
+                        `;
+                    }).join('');
                 })
                 .catch(error => {
-                    console.error('Error generating top-line review:', error);
-                    toplineReviewContent.innerHTML = 'An error occurred while generating the top-line review.';
+                    console.error('Error:', error);
+                    toplineReviewContent.innerHTML = 'Error generating top-line review.';
                 });
         }
     </script>
