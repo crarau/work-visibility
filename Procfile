@@ -1,1 +1,2 @@
-web: gunicorn frontend:app --timeout 120
+web: gunicorn frontend:app
+worker: python backend.py

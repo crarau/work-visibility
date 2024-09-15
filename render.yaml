@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: perfwriter-frontend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn frontend:app
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+  - type: worker
+    name: perfwriter-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python backend.py
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
