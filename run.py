@@ -33,7 +33,7 @@ pr_collection = db.pull_requests
 def fetch_recent_merged_prs(from_date, to_date):
     url = f"{GITHUB_API_URL}/repos/{REPO_OWNER}/{REPO_NAME}/pulls"
     params = {
-        "state": "all",
+        "state": "closed",
         "sort": "updated",
         "direction": "desc",
         "per_page": 100,
